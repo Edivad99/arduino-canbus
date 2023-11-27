@@ -1,48 +1,43 @@
-#include <df_can.h>
+#include <mcp_can.h>
 #include <SPI.h>
 
 const int SPI_CS_PIN = 10;
-MCPCAN CAN(SPI_CS_PIN);
+MCP_CAN CAN(SPI_CS_PIN);
 
 void setup() {
   pinMode(3, OUTPUT);
   Serial.begin(9600);
-  CAN.init();
-  CAN.init_Mask(MCP_RXM0, 0, 0x3ff);  // there are 2 mask in mcp2515, you need to set both of them
-  CAN.init_Mask(MCP_RXM1, 0, 0x3ff);
-  /*
-     * set filter, we can receive id from 0x04 ~ 0x09 except for 0x06
-     * // there are 6 filter in mcp2515,so it can filter six id,i.e.0x04~0x09.
-     */
-  CAN.init_Filter(MCP_RXF0, 0, 0x01);  //risponbde all'id=1
-  //CAN.init_Filter(MCP_RXF1, 0, 0x05);                         // filter 1 for id = 0x05
-  // CAN.init_Filter(MCP_RXF2, 0, 0x06);                         // filter 2 for id = 0x06
-  //CAN.init_Filter(MCP_RXF3, 0, 0x07);                         // filter 3 for id = 0x07
-  //CAN.init_Filter(MCP_RXF4, 0, 0x08);                         // filter 4 for id = 0x08
-  //CAN.init_Filter(MCP_RXF5, 0, 0x09);
-
-  if (CAN_OK != CAN.begin(CAN_500KBPS)) {
-    Serial.println("CAN KO");
-    abort();
+  // Initialize MCP2515 running at 16MHz with a baudrate of 500kb/s and the masks and filters disabled.
+  if (CAN.begin(MCP_ANY, CAN_500KBPS, MCP_16MHZ) == CAN_OK) {
+    Serial.println("MCP2515 Initialized Successfully!");
+  } else {
+    Serial.println("Error Initializing MCP2515...");
   }
+  // Set operation mode to normal so the MCP2515 sends acks to received data.
+  CAN.setMode(MCP_NORMAL);
 }
 
+long unsigned int rxId;
 unsigned char len = 0;
 unsigned char buf[8];
 
 void loop() {
+  // Read data: len = data length, buf = data byte(s)
+  CAN.readMsgBuf(&rxId, &len, buf);
 
-  if (CAN_MSGAVAIL == CAN.checkReceive()) {
-    CAN.readMsgBuf(&len, buf);  // read data,  len: data length, buf: data buf
-    for (int i = 0; i < len; i++) {
+  // Determine if message is a remote request frame.
+  if ((rxId & 0x40000000) == 0x40000000) {
+    Serial.println("REMOTE REQUEST FRAME");
+  } else {
+    for (byte i = 0; i < len; i++) {
       Serial.write(buf[i]);
       Serial.print("\t");
     }
+    Serial.println();
     if (buf[0] == 'A') {
       digitalWrite(3, HIGH);
     } else {
       digitalWrite(3, LOW);
     }
-    Serial.println();
   }
 }

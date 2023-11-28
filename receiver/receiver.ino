@@ -18,7 +18,7 @@ void setup() {
 }
 
 long unsigned int rxId;
-unsigned char len = 0;
+byte len = 0;
 unsigned char buf[8];
 
 void loop() {
@@ -34,10 +34,12 @@ void loop() {
       Serial.print("\t");
     }
     Serial.println();
-    if (buf[0] == 'A') {
-      digitalWrite(3, HIGH);
-    } else {
-      digitalWrite(3, LOW);
+    if (rxId == 1) {
+      if (buf[0] == 'A') {
+        digitalWrite(3, HIGH);
+      } else if (buf[0] == 'S') {
+        digitalWrite(3, LOW);
+      }
     }
   }
 }

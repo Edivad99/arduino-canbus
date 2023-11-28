@@ -17,19 +17,19 @@ void setup() {
 }
 
 unsigned char data[] = { 'A' };
-bool status = false;
+bool status = true;
 
 void loop() {
   // send data:  ID = 0x01, Standard CAN Frame, Data length = 1 bytes, 'data' = array of data bytes to send
-  data[0] = status ? 'A' : 'S';
   byte sndStat = CAN.sendMsgBuf(0x01, 0, sizeof(data), data);
-  if(sndStat != CAN_OK){
+  if (sndStat != CAN_OK) {
     Serial.println("Error Sending Message...");
   }
   status = !status;
+  data[0] = status ? 'A' : 'S';
   Serial.print("TEC: ");
   Serial.print(CAN.errorCountTX());
-  Serial.print("\tREC: ");
+  Serial.print(", REC: ");
   Serial.println(CAN.errorCountRX());
   delay(1000);
 }

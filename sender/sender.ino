@@ -4,6 +4,11 @@
 const int SPI_CS_PIN = 10;
 MCP_CAN CAN(SPI_CS_PIN);
 
+/*
+ * NODE A
+ * Send 2 consecutive messagges with ID=0x07 and 0x09 every 10ms
+ */
+
 void setup() {
   Serial.begin(9600);
   // Initialize MCP2515 running at 16MHz with a baudrate of 500kb/s and the masks and filters disabled.
@@ -16,20 +21,41 @@ void setup() {
   CAN.setMode(MCP_NORMAL);
 }
 
-unsigned char data[] = { 'A' };
-bool status = true;
+unsigned char data1[] = { 'A', 'B', 'C', 'D' };
+unsigned char data2[] = { 'E', 'F', 'G', 'H' };
+bool error = false;
+int time = 10; //10
 
 void loop() {
-  // send data:  ID = 0x01, Standard CAN Frame, Data length = 1 bytes, 'data' = array of data bytes to send
-  byte sndStat = CAN.sendMsgBuf(0x01, 0, sizeof(data), data);
-  if (sndStat != CAN_OK) {
-    Serial.println("Error Sending Message...");
+  sendMessage(0x07, data1);
+  delay(time);
+  sendMessage(0x09, data2);
+  delay(time);
+  if (error) {
+    printErrorCounter();
   }
-  status = !status;
-  data[0] = status ? 'A' : 'S';
+}
+
+void sendMessage(unsigned long id, unsigned char* buf) {
+  byte sndStat = CAN.sendMsgBuf(id, 0, 4, buf);
+  if (sndStat != CAN_OK) {
+    Serial.print("Error sending message ");
+    Serial.print(id);
+    Serial.println("!");
+    printErrorCounter();
+    error = true;
+  }
+}
+ 
+void printErrorCounter() {
+  byte tec = CAN.errorCountTX();
+  byte rec = CAN.errorCountRX();
   Serial.print("TEC: ");
-  Serial.print(CAN.errorCountTX());
+  Serial.print(tec);
   Serial.print(", REC: ");
-  Serial.println(CAN.errorCountRX());
-  delay(1000);
+  Serial.println(rec);
+  if (tec == 0 && rec == 0) {
+    error = false;
+    Serial.println("NO ERROR");
+  }
 }

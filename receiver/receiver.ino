@@ -4,8 +4,13 @@
 const int SPI_CS_PIN = 10;
 MCP_CAN CAN(SPI_CS_PIN);
 
+/*
+ * NODE B
+ * Send messages with ID=0x11 every 10ms
+ */
+
 void setup() {
-  pinMode(3, OUTPUT);
+  //pinMode(3, OUTPUT);
   Serial.begin(9600);
   // Initialize MCP2515 running at 16MHz with a baudrate of 500kb/s and the masks and filters disabled.
   if (CAN.begin(MCP_ANY, CAN_500KBPS, MCP_16MHZ) == CAN_OK) {
@@ -17,29 +22,36 @@ void setup() {
   CAN.setMode(MCP_NORMAL);
 }
 
-long unsigned int rxId;
-byte len = 0;
-unsigned char buf[8];
+unsigned char data[] = { 'L', 'M', 'N', 'O', 'P' };
+bool error = false;
 
 void loop() {
-  // Read data: len = data length, buf = data byte(s)
-  CAN.readMsgBuf(&rxId, &len, buf);
+  sendMessage(0x11, data);
+  delay(10);
+  if (error) {
+    printErrorCounter();
+  }
+}
 
-  // Determine if message is a remote request frame.
-  if ((rxId & 0x40000000) == 0x40000000) {
-    Serial.println("REMOTE REQUEST FRAME");
-  } else {
-    for (byte i = 0; i < len; i++) {
-      Serial.write(buf[i]);
-      Serial.print("\t");
-    }
-    Serial.println();
-    if (rxId == 1) {
-      if (buf[0] == 'A') {
-        digitalWrite(3, HIGH);
-      } else if (buf[0] == 'S') {
-        digitalWrite(3, LOW);
-      }
-    }
+void sendMessage(unsigned long id, unsigned char* buf) {
+  byte sndStat = CAN.sendMsgBuf(id, 0, 4, buf);
+  if (sndStat != CAN_OK) {
+    Serial.print("Error sending message ");
+    Serial.print(id);
+    Serial.println("!");
+    printErrorCounter();
+  }
+}
+ 
+void printErrorCounter() {
+  byte tec = CAN.errorCountTX();
+  byte rec = CAN.errorCountRX();
+  Serial.print("TEC: ");
+  Serial.print(tec);
+  Serial.print(", REC: ");
+  Serial.println(rec);
+  if (tec == 0 && rec == 0) {
+    error = false;
+    Serial.println("NO ERROR");
   }
 }

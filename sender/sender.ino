@@ -23,38 +23,34 @@ void setup() {
 
 unsigned char data1[] = { 'A', 'B', 'C', 'D' };
 unsigned char data2[] = { 'E', 'F', 'G', 'H' };
-bool error = false;
 int time = 10; //10
 
 void loop() {
-  sendMessage(0x07, data1);
+  sendMessage(0x07, 4, data1);
+  //delay(time);
+  sendMessage(0x09, 4, data2);
+  isInError();
   delay(time);
-  sendMessage(0x09, data2);
-  delay(time);
-  if (error) {
-    printErrorCounter();
-  }
 }
 
-void sendMessage(unsigned long id, unsigned char* buf) {
-  byte sndStat = CAN.sendMsgBuf(id, 0, 4, buf);
+void sendMessage(unsigned long id, byte len, unsigned char* buf) {
+  byte sndStat = CAN.sendMsgBuf(id, 0, len, buf);
   if (sndStat != CAN_OK) {
     Serial.print("Error sending message ");
     Serial.print(id);
     Serial.println("!");
-    error = true;
   }
 }
  
-void printErrorCounter() {
+bool isInError() {
   byte tec = CAN.errorCountTX();
   byte rec = CAN.errorCountRX();
-  Serial.print("TEC: ");
-  Serial.print(tec);
-  Serial.print(", REC: ");
-  Serial.println(rec);
-  if (tec == 0 && rec == 0) {
-    error = false;
-    Serial.println("NO ERROR");
+  if (tec != 0 || rec != 0) {
+    Serial.print("TEC: ");
+    Serial.print(tec);
+    Serial.print(", REC: ");
+    Serial.println(rec);
+    return true;
   }
+  return false;
 }

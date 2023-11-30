@@ -42,7 +42,6 @@ void sendMessage(unsigned long id, unsigned char* buf) {
     Serial.print("Error sending message ");
     Serial.print(id);
     Serial.println("!");
-    printErrorCounter();
     error = true;
   }
 }

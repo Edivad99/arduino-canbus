@@ -10,7 +10,7 @@ MCP_CAN CAN(SPI_CS_PIN);
  */
 
 void setup() {
-  //pinMode(3, OUTPUT);
+  pinMode(3, OUTPUT);
   Serial.begin(9600);
   // Initialize MCP2515 running at 16MHz with a baudrate of 500kb/s and the masks and filters disabled.
   if (CAN.begin(MCP_ANY, CAN_500KBPS, MCP_16MHZ) == CAN_OK) {
@@ -29,7 +29,10 @@ void loop() {
   sendMessage(0x11, data);
   delay(10);
   if (error) {
+    digitalWrite(3, HIGH);
     printErrorCounter();
+  } else {
+    digitalWrite(3, LOW);
   }
 }
 

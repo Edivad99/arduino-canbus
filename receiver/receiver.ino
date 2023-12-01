@@ -23,6 +23,9 @@ void setup() {
 }
 
 unsigned char data[] = { 'L', 'M', 'N', 'O', 'P' };
+enum states { ERROR_ACTIVE, ERROR_PASSIVE, BUS_OFF };
+
+states current = ERROR_ACTIVE;
 
 void loop() {
   sendMessage(0x11, 5, data);
@@ -49,7 +52,17 @@ void sendMessage(unsigned long id, byte len, unsigned char* buf) {
 }
  
 bool isInError() {
-  byte tec = CAN.errorCountTX();
+  states now = getCurrentStatus();
+  if (now != current) {
+    switch (now) {
+      case BUS_OFF: Serial.println("BUS_OFF");
+      case ERROR_ACTIVE: Serial.println("ERROR_ACTIVE");
+      case ERROR_PASSIVE: Serial.println("ERROR_PASSIVE");
+    }
+    current = now;
+  }
+  return current != ERROR_ACTIVE;
+  /*byte tec = CAN.errorCountTX();
   byte rec = CAN.errorCountRX();
   if (tec != 0 || rec != 0) {
     Serial.print("TEC: ");
@@ -58,5 +71,16 @@ bool isInError() {
     Serial.println(rec);
     return true;
   }
-  return false;
+  return false;*/
+}
+
+int getCurrentStatus() {
+  byte tec = CAN.errorCountTX();
+  byte rec = CAN.errorCountRX();
+  if (tec > 255) {
+    return BUS_OFF;
+  } else if (tec > 127 || rec > 127) {
+    return ERROR_PASSIVE;
+  }
+  return ERROR_ACTIVE;
 }

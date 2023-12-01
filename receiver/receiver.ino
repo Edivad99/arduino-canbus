@@ -25,7 +25,7 @@ void setup() {
 unsigned char data[] = { 'L', 'M', 'N', 'O', 'P' };
 
 void loop() {
-  sendMessage(0x11, 4, data);
+  sendMessage(0x11, 5, data);
   if (isInError()) {
     digitalWrite(3, HIGH);
   } else {
@@ -35,11 +35,16 @@ void loop() {
 }
 
 void sendMessage(unsigned long id, byte len, unsigned char* buf) {
-  byte sndStat = CAN.sendMsgBuf(id, 0, len, buf);
-  if (sndStat != CAN_OK) {
-    Serial.print("Error sending message ");
-    Serial.print(id);
-    Serial.println("!");
+  byte res = CAN.sendMsgBuf(id, len, buf);
+  if (res != CAN_OK) {
+    Serial.print("Error sending message 0x");
+    Serial.print(id < 16 ? "0" : "");
+    Serial.print(id, HEX);
+  }
+  if (res == CAN_GETTXBFTIMEOUT) {
+    Serial.println(", get TX buff time out!");
+  } else if (res == CAN_SENDMSGTIMEOUT) {
+    Serial.println(", send msg timeout!");
   }
 }
  

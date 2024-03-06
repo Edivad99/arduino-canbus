@@ -25,15 +25,25 @@ unsigned char data1[] = { 'A', 'B', 'C', 'D' };
 unsigned char data2[] = { 'E', 'F', 'G', 'H' };
 int time = 10; //10
 
+unsigned long startMillis;
+unsigned long currentMillis;
+
 void loop() {
+  /*currentMillis = millis();
+  if (currentMillis - startMillis >= 10) {
+    sendMessage(0x07, 4, data1);
+    sendMessage(0x09, 4, data2);
+    startMillis = currentMillis;
+  }*/
+
+
   sendMessage(0x07, 4, data1);
-  //delay(time);
   sendMessage(0x09, 4, data2);
-  isInError();
   delay(time);
+  //packetSniff();
 }
 
-void sendMessage(unsigned long id, byte len, char* buf) {
+void sendMessage(unsigned long id, byte len, unsigned char* buf) {
   byte res = CAN.sendMsgBuf(id, len, buf);
   if (res != CAN_OK) {
     Serial.print("Error sending message 0x");
@@ -58,4 +68,29 @@ bool isInError() {
     return true;
   }
   return false;
+}
+
+
+unsigned long rxId;
+byte len = 0;
+unsigned char buf[8];
+
+void packetSniff() {
+  if (CAN_MSGAVAIL == CAN.checkReceive() && CAN_OK == CAN.readMsgBuf(&rxId, &len, buf)) {
+    if ((rxId & 0x40000000) == 0x40000000) {
+      Serial.println("REMOTE REQUEST FRAME");
+    } else {
+      Serial.print("ID: 0x");
+      Serial.print(rxId < 16 ? "0" : "");
+      Serial.print(rxId, HEX);
+      Serial.print("\tDLC: ");
+      Serial.print(len);
+      Serial.print("\t");
+      for (byte i = 0; i < len; i++) {
+        Serial.write(buf[i]);
+        Serial.print("\t");
+      }
+      Serial.println();
+    }
+  }
 }
